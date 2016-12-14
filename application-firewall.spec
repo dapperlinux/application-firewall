@@ -1,14 +1,15 @@
 Summary:    Application level firewall for gnome-shell
 Name:       application-firewall
 Version:    1
-Release:    1
+Release:    2
 
 Group:      System Environment/Base
 License:    BSD
 Url:        https://github.com/subgraph/fw-daemon
-Source0:    fw-daemon.tar.xz
+Source0:    %{name}-%{version}.tar.xz
 BuildArch:  x86_64
 
+BuildRequires:  go
 Requires:   libnetfilter_queue
 Requires:   libnetfilter_queue-devel
 BuildRequires:  libnetfilter_queue
@@ -19,15 +20,17 @@ BuildRequires:  gtk3-devel
 
 
 %description
-Application firewall notifys the user when an application attempts to make an unknown network
-request. Intergrates into gnome-shell.
+Application firewall notifies the user when an application attempts to make an unknown network
+request. Intergrates into gnome-shell, and the user and select to approve requests forever, for 
+this session, and as a system rule.
 
 %prep
+%autosetup
 
 %build
-mkdir -p %{buildroot}/gocode/src/github.com/subgraph/
-mv fw-daemon %{buildroot}/gocode/src/github.com/subgraph/
-export GOPATH=%{buildroot}/gocode
+mkdir -p %{_builddir}/gocode/src/github.com/subgraph/
+mv fw-daemon %{_builddir}/gocode/src/github.com/subgraph/
+export GOPATH=%{_builddir}/gocode
 go build github.com/subgraph/fw-daemon
 go build github.com/subgraph/fw-daemon/fw-settings
 
@@ -38,11 +41,12 @@ mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d/
 mkdir -p %{buildroot}/lib/systemd/system
 mkdir -p %{buildroot}%{_datarootdir}/gnome-shell/extensions
-mv fw-daemon %{buildroot}%{_sbindir}
-mv fw-settings %{buildroot}%{_bindir}
-mv %{buildroot}/gocode/src/github.com/subgraph/fw-daemon/sources/etc/dbus-1/system.d/com.subgraph.Firewall.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/
-mv %{buildroot}/gocode/src/github.com/subgraph/fw-daemon/sources/lib/systemd/system/fw-daemon.service %{buildroot}/lib/systemd/system/
-mv %{buildroot}/gocode/src/github.com/subgraph/fw-daemon/gnome-shell/firewall@subgraph.com %{buildroot}%{_datarootdir}/gnome-shell/extensions
+install -m 755 fw-daemon %{buildroot}%{_sbindir}
+install -m 755 fw-settings %{buildroot}%{_bindir}
+mv %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/gnome-shell/firewall@subgraph.com %{buildroot}%{_datarootdir}/gnome-shell/extensions
+cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/etc/dbus-1/system.d/com.subgraph.Firewall.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/
+cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/lib/systemd/system/fw-daemon.service %{buildroot}/lib/systemd/system/
+
 
 
 %clean
