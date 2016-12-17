@@ -1,12 +1,12 @@
 Summary:    Application level firewall for gnome-shell
 Name:       application-firewall
 Version:    1
-Release:    2
+Release:    4
 
 Group:      System Environment/Base
 License:    BSD
 Url:        https://github.com/subgraph/fw-daemon
-Source0:    %{name}-%{version}.tar.xz
+Source0:    %{name}-%{version}.tar.gz
 BuildArch:  x86_64
 
 BuildRequires:  go

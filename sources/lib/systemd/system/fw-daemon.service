@@ -1,10 +1,16 @@
 [Unit]
 Description=Subgraph Firewall Daemon
+Wants=network.target filesystem.target
+After=network.target filesystem.target
 
 [Service]
 Environment="GODEBUG=cgocheck=0"
 ExecStart=/usr/sbin/fw-daemon
 ExecReload=/bin/kill -HUP ${MAINPID}
+StandardOutput=syslog
+StandardError=syslog
+SyslogFacility=daemon
+SyslogIdentifier=fw-daemon
 
 [Install]
 WantedBy=multi-user.target
