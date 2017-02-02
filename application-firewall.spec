@@ -1,12 +1,13 @@
 Summary:    Application level firewall for gnome-shell
 Name:       application-firewall
 Version:    1
-Release:    4
+Release:    5
 
 Group:      System Environment/Base
 License:    BSD
 Url:        https://github.com/subgraph/fw-daemon
 Source0:    %{name}-%{version}.tar.gz
+Source1:    sgfw.conf
 BuildArch:  x86_64
 
 BuildRequires:  go
@@ -41,8 +42,10 @@ mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d/
 mkdir -p %{buildroot}/lib/systemd/system
 mkdir -p %{buildroot}%{_datarootdir}/gnome-shell/extensions
+mkdir -p %{buildroot}%{_sysconfdir}/sgfw
 install -m 755 fw-daemon %{buildroot}%{_sbindir}
 install -m 755 fw-settings %{buildroot}%{_bindir}
+install -m 644 %{SOURCE1} %{buildroot}%{_sysconfdir}/sgfw
 mv %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/gnome-shell/firewall@subgraph.com %{buildroot}%{_datarootdir}/gnome-shell/extensions
 cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/etc/dbus-1/system.d/com.subgraph.Firewall.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/
 cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/lib/systemd/system/fw-daemon.service %{buildroot}/lib/systemd/system/
@@ -61,9 +64,13 @@ systemctl start fw-daemon.service
 %{_sbindir}/fw-daemon
 %{_bindir}/fw-settings
 %{_sysconfdir}/dbus-1/system.d/com.subgraph.Firewall.conf
+%{_sysconfdir}/sgfw/sgfw.conf
 /lib/systemd/system/fw-daemon.service
 %{_datarootdir}/gnome-shell/extensions/firewall@subgraph.com/*
 
 %changelog
+* Thu Feb  2 2017 Matthew Ruffell <msr50@uclive.ac.nz>
+- Adding in /etc/sgfw/sgfw.conf file
+
 * Sun Dec  4 2016 Matthew Ruffell <msr50@uclive.ac.nz>
 - First packaging
