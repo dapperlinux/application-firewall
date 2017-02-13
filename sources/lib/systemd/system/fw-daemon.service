@@ -1,7 +1,7 @@
 [Unit]
 Description=Subgraph Firewall Daemon
-Wants=network.target filesystem.target
-After=network.target filesystem.target
+Wants=network.target
+After=network.target multi-user.target
 
 [Service]
 Environment="GODEBUG=cgocheck=0"
@@ -13,4 +13,4 @@ SyslogFacility=daemon
 SyslogIdentifier=fw-daemon
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target
