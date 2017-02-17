@@ -1,4 +1,5 @@
 [D-BUS Service]
 Name=com.subgraph.FirewallPrompt
 Exec=/usr/sbin/fw-daemon
+User=root
 SystemdService=fw-daemon.service
