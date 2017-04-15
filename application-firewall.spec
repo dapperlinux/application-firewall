@@ -44,6 +44,7 @@ mkdir -p %{buildroot}%{_datarootdir}/dbus-1/services
 mkdir -p %{buildroot}%{_datarootdir}/dbus-1/system-services
 mkdir -p %{buildroot}%{_datarootdir}/gnome-shell/extensions
 mkdir -p %{buildroot}%{_sysconfdir}/sgfw
+mkdir -p %{buildroot}%{_datarootdir}/applications
 install -m 755 fw-daemon %{buildroot}%{_sbindir}
 install -m 755 fw-settings %{buildroot}%{_bindir}
 install -m 644 %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/etc/sgfw/sgfw.conf %{buildroot}%{_sysconfdir}/sgfw
@@ -52,6 +53,7 @@ cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/etc/dbus-1/syst
 cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/lib/systemd/system/fw-daemon.service %{buildroot}/lib/systemd/system/
 cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/usr/share/dbus-1/services/com.subgraph.FirewallPrompt.service %{buildroot}%{_datarootdir}/dbus-1/services
 cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/usr/share/dbus-1/system-services/com.subgraph.Firewall.service %{buildroot}%{_datarootdir}/dbus-1/system-services
+cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/usr/share/applications/subgraph-firewall.desktop %{buildroot}%{_datarootdir}/applications
 
 
 
@@ -63,6 +65,10 @@ cp %{_builddir}/gocode/src/github.com/subgraph/fw-daemon/sources/usr/share/dbus-
 systemctl enable fw-daemon.service
 systemctl start fw-daemon.service
 
+%preun
+systemctl stop fw-daemon.service
+systemctl disable fw-daemon.service
+
 %files
 %{_sbindir}/fw-daemon
 %{_bindir}/fw-settings
@@ -72,6 +78,7 @@ systemctl start fw-daemon.service
 %{_datarootdir}/dbus-1/services/com.subgraph.FirewallPrompt.service
 %{_datarootdir}/dbus-1/system-services/com.subgraph.Firewall.service
 %{_datarootdir}/gnome-shell/extensions/firewall@subgraph.com/*
+%{_datarootdir}/applications/subgraph-firewall.desktop
 
 %changelog
 * Mon Feb 13 2017 Matthew Ruffell <msr50@uclive.ac.nz>
