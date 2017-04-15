@@ -1,9 +1,9 @@
 # application-firewall
 
-##About
+## About
 The Application Firewall package contains the interactive firewall used in the Dapper Linux distribution. 
 
-##Building
+## Building
 To build this package, first install an RPM development chain:
 
 ```bash
