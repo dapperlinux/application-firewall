@@ -1,5 +1,4 @@
 [Desktop Entry]
-Encoding=UTF-8
 Name=Application Firewall Settings
 Comment=Launch the Application Firewall Settings
 TryExec=fw-settings
@@ -8,3 +7,4 @@ Terminal=false
 Type=Application
 Icon=security-medium
 Categories=X-GNOME-Sundry
+X-Desktop-File-Install-Version=0.23

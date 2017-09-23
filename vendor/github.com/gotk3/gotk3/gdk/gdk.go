@@ -252,6 +252,21 @@ const (
 	SCROLL_SMOOTH ScrollDirection = C.GDK_SCROLL_SMOOTH
 )
 
+// WindowState is a representation of GDK's GdkWindowState
+type WindowState int
+
+const (
+	WINDOW_STATE_WITHDRAWN  WindowState = C.GDK_WINDOW_STATE_WITHDRAWN
+	WINDOW_STATE_ICONIFIED  WindowState = C.GDK_WINDOW_STATE_ICONIFIED
+	WINDOW_STATE_MAXIMIZED  WindowState = C.GDK_WINDOW_STATE_MAXIMIZED
+	WINDOW_STATE_STICKY     WindowState = C.GDK_WINDOW_STATE_STICKY
+	WINDOW_STATE_FULLSCREEN WindowState = C.GDK_WINDOW_STATE_FULLSCREEN
+	WINDOW_STATE_ABOVE      WindowState = C.GDK_WINDOW_STATE_ABOVE
+	WINDOW_STATE_BELOW      WindowState = C.GDK_WINDOW_STATE_BELOW
+	WINDOW_STATE_FOCUSED    WindowState = C.GDK_WINDOW_STATE_FOCUSED
+	WINDOW_STATE_TILED      WindowState = C.GDK_WINDOW_STATE_TILED
+)
+
 // CURRENT_TIME is a representation of GDK_CURRENT_TIME
 
 const CURRENT_TIME = C.GDK_CURRENT_TIME
@@ -288,6 +303,13 @@ const (
 	DEVICE_TYPE_MASTER   DeviceType = C.GDK_DEVICE_TYPE_MASTER
 	DEVICE_TYPE_SLAVE    DeviceType = C.GDK_DEVICE_TYPE_SLAVE
 	DEVICE_TYPE_FLOATING DeviceType = C.GDK_DEVICE_TYPE_FLOATING
+)
+
+// EventPropagation constants
+
+const (
+	GDK_EVENT_PROPAGATE bool = C.GDK_EVENT_PROPAGATE != 0
+	GDK_EVENT_STOP      bool = C.GDK_EVENT_STOP != 0
 )
 
 /*
@@ -345,25 +367,6 @@ func marshalDevice(p uintptr) (interface{}, error) {
 	return &Device{obj}, nil
 }
 
-// Grab() is a wrapper around gdk_device_grab().
-func (v *Device) Grab(w *Window, ownership GrabOwnership, owner_events bool, event_mask EventMask, cursor *Cursor, time uint32) GrabStatus {
-	ret := C.gdk_device_grab(
-		v.native(),
-		w.native(),
-		C.GdkGrabOwnership(ownership),
-		gbool(owner_events),
-		C.GdkEventMask(event_mask),
-		cursor.native(),
-		C.guint32(time),
-	)
-	return GrabStatus(ret)
-}
-
-// Ungrab() is a wrapper around gdk_device_ungrab().
-func (v *Device) Ungrab(time uint32) {
-	C.gdk_device_ungrab(v.native(), C.guint32(time))
-}
-
 /*
  * GdkCursor
  */
@@ -371,6 +374,21 @@ func (v *Device) Ungrab(time uint32) {
 // Cursor is a representation of GdkCursor.
 type Cursor struct {
 	*glib.Object
+}
+
+// CursorNewFromName is a wrapper around gdk_cursor_new_from_name().
+func CursorNewFromName(display *Display, name string) (*Cursor, error) {
+	cstr := C.CString(name)
+	defer C.free(unsafe.Pointer(cstr))
+	c := C.gdk_cursor_new_from_name(display.native(), (*C.gchar)(cstr))
+	if c == nil {
+		return nil, nilPtrErr
+	}
+
+	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
+	runtime.SetFinalizer(obj, (*glib.Object).Unref)
+
+	return &Cursor{obj}, nil
 }
 
 // native returns a pointer to the underlying GdkCursor.
@@ -422,18 +440,6 @@ func marshalDeviceManager(p uintptr) (interface{}, error) {
 	return &DeviceManager{obj}, nil
 }
 
-// GetClientPointer() is a wrapper around gdk_device_manager_get_client_pointer().
-func (v *DeviceManager) GetClientPointer() (*Device, error) {
-	c := C.gdk_device_manager_get_client_pointer(v.native())
-	if c == nil {
-		return nil, nilPtrErr
-	}
-	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
-	obj.Ref()
-	runtime.SetFinalizer(obj, (*glib.Object).Unref)
-	return &Device{obj}, nil
-}
-
 // GetDisplay() is a wrapper around gdk_device_manager_get_display().
 func (v *DeviceManager) GetDisplay() (*Display, error) {
 	c := C.gdk_device_manager_get_display(v.native())
@@ -444,22 +450,6 @@ func (v *DeviceManager) GetDisplay() (*Display, error) {
 	obj.Ref()
 	runtime.SetFinalizer(obj, (*glib.Object).Unref)
 	return &Display{obj}, nil
-}
-
-// ListDevices() is a wrapper around gdk_device_manager_list_devices().
-func (v *DeviceManager) ListDevices(tp DeviceType) *glib.List {
-	clist := C.gdk_device_manager_list_devices(v.native(), C.GdkDeviceType(tp))
-	if clist == nil {
-		return nil
-	}
-	glist := glib.WrapList(uintptr(unsafe.Pointer(clist)))
-	glist.DataWrapper(func(ptr unsafe.Pointer) interface{} {
-		return &Device{&glib.Object{glib.ToGObject(ptr)}}
-	})
-	runtime.SetFinalizer(glist, func(glist *glib.List) {
-		glist.Free()
-	})
-	return glist
 }
 
 /*
@@ -536,19 +526,6 @@ func (v *Display) GetName() (string, error) {
 	return C.GoString((*C.char)(c)), nil
 }
 
-// GetScreen() is a wrapper around gdk_display_get_screen().
-func (v *Display) GetScreen(screenNum int) (*Screen, error) {
-	c := C.gdk_display_get_screen(v.native(), C.gint(screenNum))
-	if c == nil {
-		return nil, nilPtrErr
-	}
-	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
-	s := &Screen{obj}
-	obj.Ref()
-	runtime.SetFinalizer(obj, (*glib.Object).Unref)
-	return s, nil
-}
-
 // GetDefaultScreen() is a wrapper around gdk_display_get_default_screen().
 func (v *Display) GetDefaultScreen() (*Screen, error) {
 	c := C.gdk_display_get_default_screen(v.native())
@@ -560,19 +537,6 @@ func (v *Display) GetDefaultScreen() (*Screen, error) {
 	obj.Ref()
 	runtime.SetFinalizer(obj, (*glib.Object).Unref)
 	return s, nil
-}
-
-// GetDeviceManager() is a wrapper around gdk_display_get_device_manager().
-func (v *Display) GetDeviceManager() (*DeviceManager, error) {
-	c := C.gdk_display_get_device_manager(v.native())
-	if c == nil {
-		return nil, nilPtrErr
-	}
-	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
-	d := &DeviceManager{obj}
-	obj.Ref()
-	runtime.SetFinalizer(obj, (*glib.Object).Unref)
-	return d, nil
 }
 
 // DeviceIsGrabbed() is a wrapper around gdk_display_device_is_grabbed().
@@ -827,6 +791,14 @@ func KeyvalToUpper(v uint) uint {
 	return uint(C.gdk_keyval_to_upper(C.guint(v)))
 }
 
+func KeyvalToUnicode(v uint) rune {
+	return rune(C.gdk_keyval_to_unicode(C.guint(v)))
+}
+
+func UnicodeToKeyval(v rune) uint {
+	return uint(C.gdk_unicode_to_keyval(C.guint32(v)))
+}
+
 /*
  * GdkDragContext
  */
@@ -899,6 +871,25 @@ func (v *Event) free() {
 // EventButton is a representation of GDK's GdkEventButton.
 type EventButton struct {
 	*Event
+}
+
+func EventButtonNew() *EventButton {
+	ee := (*C.GdkEvent)(unsafe.Pointer(&C.GdkEventButton{}))
+	ev := Event{ee}
+	return &EventButton{&ev}
+}
+
+// EventButtonNewFromEvent returns an EventButton from an Event.
+//
+// Using widget.Connect() for a key related signal such as
+// "button-press-event" results in a *Event being passed as
+// the callback's second argument. The argument is actually a
+// *EventButton. EventButtonNewFromEvent provides a means of creating
+// an EventKey from the Event.
+func EventButtonNewFromEvent(event *Event) *EventButton {
+	ee := (*C.GdkEvent)(unsafe.Pointer(event.native()))
+	ev := Event{ee}
+	return &EventButton{&ev}
 }
 
 // Native returns a pointer to the underlying GdkEventButton.
@@ -985,6 +976,19 @@ func EventKeyNew() *EventKey {
 	return &EventKey{&ev}
 }
 
+// EventKeyNewFromEvent returns an EventKey from an Event.
+//
+// Using widget.Connect() for a key related signal such as
+// "key-press-event" results in a *Event being passed as
+// the callback's second argument. The argument is actually a
+// *EventKey. EventKeyNewFromEvent provides a means of creating
+// an EventKey from the Event.
+func EventKeyNewFromEvent(event *Event) *EventKey {
+	ee := (*C.GdkEvent)(unsafe.Pointer(event.native()))
+	ev := Event{ee}
+	return &EventKey{&ev}
+}
+
 // Native returns a pointer to the underlying GdkEventKey.
 func (v *EventKey) Native() uintptr {
 	return uintptr(unsafe.Pointer(v.native()))
@@ -1017,6 +1021,25 @@ type EventMotion struct {
 	*Event
 }
 
+func EventMotionNew() *EventMotion {
+	ee := (*C.GdkEvent)(unsafe.Pointer(&C.GdkEventMotion{}))
+	ev := Event{ee}
+	return &EventMotion{&ev}
+}
+
+// EventMotionNewFromEvent returns an EventMotion from an Event.
+//
+// Using widget.Connect() for a key related signal such as
+// "button-press-event" results in a *Event being passed as
+// the callback's second argument. The argument is actually a
+// *EventMotion. EventMotionNewFromEvent provides a means of creating
+// an EventKey from the Event.
+func EventMotionNewFromEvent(event *Event) *EventMotion {
+	ee := (*C.GdkEvent)(unsafe.Pointer(event.native()))
+	ev := Event{ee}
+	return &EventMotion{&ev}
+}
+
 // Native returns a pointer to the underlying GdkEventMotion.
 func (v *EventMotion) Native() uintptr {
 	return uintptr(unsafe.Pointer(v.native()))
@@ -1045,6 +1068,25 @@ func (v *EventMotion) MotionValRoot() (float64, float64) {
 // EventScroll is a representation of GDK's GdkEventScroll.
 type EventScroll struct {
 	*Event
+}
+
+func EventScrollNew() *EventScroll {
+	ee := (*C.GdkEvent)(unsafe.Pointer(&C.GdkEventScroll{}))
+	ev := Event{ee}
+	return &EventScroll{&ev}
+}
+
+// EventScrollNewFromEvent returns an EventScroll from an Event.
+//
+// Using widget.Connect() for a key related signal such as
+// "button-press-event" results in a *Event being passed as
+// the callback's second argument. The argument is actually a
+// *EventScroll. EventScrollNewFromEvent provides a means of creating
+// an EventKey from the Event.
+func EventScrollNewFromEvent(event *Event) *EventScroll {
+	ee := (*C.GdkEvent)(unsafe.Pointer(event.native()))
+	ev := Event{ee}
+	return &EventScroll{&ev}
 }
 
 // Native returns a pointer to the underlying GdkEventScroll.
@@ -1080,6 +1122,58 @@ func (v *EventScroll) Type() EventType {
 func (v *EventScroll) Direction() ScrollDirection {
 	c := v.native().direction
 	return ScrollDirection(c)
+}
+
+/*
+ * GdkEventWindowState
+ */
+
+// EventWindowState is a representation of GDK's GdkEventWindowState.
+type EventWindowState struct {
+	*Event
+}
+
+func EventWindowStateNew() *EventWindowState {
+	ee := (*C.GdkEvent)(unsafe.Pointer(&C.GdkEventWindowState{}))
+	ev := Event{ee}
+	return &EventWindowState{&ev}
+}
+
+// EventWindowStateNewFromEvent returns an EventWindowState from an Event.
+//
+// Using widget.Connect() for the
+// "window-state-event" signal results in a *Event being passed as
+// the callback's second argument. The argument is actually a
+// *EventWindowState. EventWindowStateNewFromEvent provides a means of creating
+// an EventWindowState from the Event.
+func EventWindowStateNewFromEvent(event *Event) *EventWindowState {
+	ee := (*C.GdkEvent)(unsafe.Pointer(event.native()))
+	ev := Event{ee}
+	return &EventWindowState{&ev}
+}
+
+// Native returns a pointer to the underlying GdkEventWindowState.
+func (v *EventWindowState) Native() uintptr {
+	return uintptr(unsafe.Pointer(v.native()))
+}
+
+func (v *EventWindowState) native() *C.GdkEventWindowState {
+	return (*C.GdkEventWindowState)(unsafe.Pointer(v.Event.native()))
+}
+
+func (v *EventWindowState) Type() EventType {
+	c := v.native()._type
+	return EventType(c)
+}
+
+func (v *EventWindowState) ChangedMask() WindowState {
+	c := v.native().changed_mask
+	return WindowState(c)
+}
+
+func (v *EventWindowState) NewWindowState() WindowState {
+	c := v.native().new_window_state
+	return WindowState(c)
 }
 
 /*
@@ -1406,6 +1500,32 @@ func PixbufLoaderNew() (*PixbufLoader, error) {
 	if c == nil {
 		return nil, nilPtrErr
 	}
+
+	//TODO this should be some wrap object
+	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
+	p := &PixbufLoader{obj}
+	runtime.SetFinalizer(obj, (*glib.Object).Unref)
+	return p, nil
+}
+
+// PixbufLoaderNewWithType() is a wrapper around gdk_pixbuf_loader_new_with_type().
+func PixbufLoaderNewWithType(t string) (*PixbufLoader, error) {
+	var err *C.GError
+
+	cstr := C.CString(t)
+	defer C.free(unsafe.Pointer(cstr))
+
+	c := C.gdk_pixbuf_loader_new_with_type((*C.char)(cstr), &err)
+	if err != nil {
+		defer C.g_error_free(err)
+		return nil, errors.New(C.GoString((*C.char)(err.message)))
+	}
+
+	if c == nil {
+		return nil, nilPtrErr
+	}
+
+	//TODO this should be some wrap object
 	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
 	p := &PixbufLoader{obj}
 	runtime.SetFinalizer(obj, (*glib.Object).Unref)
@@ -1429,6 +1549,7 @@ func (v *PixbufLoader) Write(data []byte) (int, error) {
 	c := C.gdk_pixbuf_loader_write(v.native(),
 		(*C.guchar)(unsafe.Pointer(&data[0])), C.gsize(len(data)),
 		&err)
+
 	if !gobool(c) {
 		defer C.g_error_free(err)
 		return 0, errors.New(C.GoString((*C.char)(err.message)))
@@ -1610,6 +1731,11 @@ func marshalVisual(p uintptr) (interface{}, error) {
 // Window is a representation of GDK's GdkWindow.
 type Window struct {
 	*glib.Object
+}
+
+// SetCursor is a wrapper around gdk_window_set_cursor().
+func (v *Window) SetCursor(cursor *Cursor) {
+	C.gdk_window_set_cursor(v.native(), cursor.native())
 }
 
 // native returns a pointer to the underlying GdkWindow.

@@ -3,10 +3,12 @@ package sgfw
 import (
 	"errors"
 	"path"
+	"strconv"
 
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
 	"github.com/op/go-logging"
+	"github.com/subgraph/fw-daemon/proc-coroner"
 )
 
 const introspectXML = `
@@ -48,10 +50,47 @@ const busName = "com.subgraph.Firewall"
 const objectPath = "/com/subgraph/Firewall"
 const interfaceName = "com.subgraph.Firewall"
 
+type dbusObjectP struct {
+	dbus.BusObject
+}
+
+func newDbusObjectPrompt() (*dbusObjectP, error) {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return nil, err
+	}
+	return &dbusObjectP{conn.Object("com.subgraph.fwprompt.EventNotifier", "/com/subgraph/fwprompt/EventNotifier")}, nil
+}
+
 type dbusServer struct {
 	fw       *Firewall
 	conn     *dbus.Conn
 	prompter *prompter
+}
+
+func DbusProcDeathCB(pid int, param interface{}) {
+	ds := param.(*dbusServer)
+	ds.fw.lock.Lock()
+	defer ds.fw.lock.Unlock()
+	done, updated := false, false
+	for !done {
+		done = true
+		for _, p := range ds.fw.policies {
+			for r := 0; r < len(p.rules); r++ {
+				if p.rules[r].pid == pid && p.rules[r].mode == RULE_MODE_PROCESS {
+					p.rules = append(p.rules[:r], p.rules[r+1:]...)
+					done = false
+					updated = true
+					log.Notice("Removed per-process firewall rule for PID: ", pid)
+					break
+				}
+			}
+		}
+	}
+
+	if updated {
+		dbusp.alertRule("Firewall removed on process death")
+	}
 }
 
 func newDbusServer() (*dbusServer, error) {
@@ -78,6 +117,7 @@ func newDbusServer() (*dbusServer, error) {
 
 	ds.conn = conn
 	ds.prompter = newPrompter(conn)
+	pcoroner.AddCallback(DbusProcDeathCB, ds)
 	return ds, nil
 }
 
@@ -93,13 +133,40 @@ func (ds *dbusServer) IsEnabled() (bool, *dbus.Error) {
 }
 
 func createDbusRule(r *Rule) DbusRule {
+	netstr := ""
+	if r.network != nil {
+		netstr = r.network.String()
+	}
+	ostr := ""
+	if r.saddr != nil {
+		ostr = r.saddr.String()
+	}
+	pstr := ""
+
+	if r.uname != "" {
+		pstr = r.uname
+	} else if r.uid >= 0 {
+		pstr = strconv.Itoa(r.uid)
+	}
+	if r.gname != "" {
+		pstr += ":" + r.gname
+	} else if r.gid >= 0 {
+		pstr += ":" + strconv.Itoa(r.gid)
+	}
+	log.Debugf("SANDBOX SANDBOX SANDBOX: %s", r.sandbox)
 	return DbusRule{
-		ID:     uint32(r.id),
-		App:    path.Base(r.policy.path),
-		Path:   r.policy.path,
-		Verb:   uint16(r.rtype),
-		Target: r.AddrString(false),
-		Mode:   uint16(r.mode),
+		ID:      uint32(r.id),
+		Net:     netstr,
+		Origin:  ostr,
+		Proto:   r.proto,
+		Pid:     uint32(r.pid),
+		Privs:   pstr,
+		App:     path.Base(r.policy.path),
+		Path:    r.policy.path,
+		Verb:    uint16(r.rtype),
+		Target:  r.AddrString(false),
+		Mode:    uint16(r.mode),
+		Sandbox: r.sandbox,
 	}
 }
 
@@ -153,9 +220,12 @@ func (ds *dbusServer) UpdateRule(rule DbusRule) *dbus.Error {
 			r.rtype = RuleAction(rule.Verb)
 		}
 		r.hostname = tmp.hostname
+		r.proto = tmp.proto
+		r.pid = tmp.pid
 		r.addr = tmp.addr
 		r.port = tmp.port
 		r.mode = RuleMode(rule.Mode)
+		r.sandbox = rule.Sandbox
 		r.policy.lock.Unlock()
 		if r.mode != RULE_MODE_SESSION {
 			ds.fw.saveRules()
@@ -201,4 +271,8 @@ func (ds *dbusServer) SetConfig(key string, val dbus.Variant) *dbus.Error {
 func (ds *dbusServer) prompt(p *Policy) {
 	log.Info("prompting...")
 	ds.prompter.prompt(p)
+}
+
+func (ob *dbusObjectP) alertRule(data string) {
+	ob.Call("com.subgraph.fwprompt.EventNotifier.Alert", 0, data)
 }
