@@ -3,7 +3,7 @@
 Summary:    Application level firewall for gnome-shell
 Name:       application-firewall
 Version:    1
-Release:    11
+Release:    12
 
 Group:      System Environment/Base
 License:    BSD
