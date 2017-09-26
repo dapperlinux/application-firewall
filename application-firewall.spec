@@ -3,7 +3,7 @@
 Summary:    Application level firewall for gnome-shell
 Name:       application-firewall
 Version:    1
-Release:    12
+Release:    13
 
 Group:      System Environment/Base
 License:    BSD
@@ -83,6 +83,9 @@ systemctl disable fw-daemon.service
 %{_datarootdir}/applications/subgraph-firewall.desktop
 
 %changelog
+* Wed Sep 27 2017 Matthew Ruffell <msr50@uclive.ac.nz>
+- Merging in new fw-daemon and resyncing to upstream
+
 * Mon Feb 13 2017 Matthew Ruffell <msr50@uclive.ac.nz>
 - Adding in /usr/share/dbus-1/system-services/com.subgraph.FirewallPrompt.service file
 
