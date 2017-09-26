@@ -156,7 +156,7 @@ const OptionList = new Lang.Class({
     },
 
     setOptionText: function(idx, text) {
-        if(this.items.length <= idx) {
+        if (this.items.length <= idx) {
             //log("SGFW: attempt to setOptionText with idx = "+ idx + " when this.items.length = "+ this.items.length)
             return;
         }
@@ -164,14 +164,14 @@ const OptionList = new Lang.Class({
     },
  
     addTLSOption: function(tlsGuardEnabled) {
-        let tlsg = new OptionListItem("Drop connection if not TLS with valid certificate",0);
-        tlsg.setSelected(tlsGuardEnabled);
-        tlsg.connect('selected', Lang.bind(this, function() {
-            this._toggleTLSGuard(tlsg);
+        this._tlsg = new OptionListItem("Drop connection if not TLS with valid certificate",0);
+        this._tlsg.setSelected(tlsGuardEnabled);
+        this._tlsg.connect('selected', Lang.bind(this, function() {
+            this._toggleTLSGuard(this._tlsg);
         }));
-        let emptyRow = new OptionListItem("",0);
+        let emptyRow = new OptionListItem("-------------------------------------------------", 0);
         this.actor.add_child(emptyRow.actor);
-        this.actor.add_child(tlsg.actor);
+        this.actor.add_child(this._tlsg.actor);
     },
 
     _toggleTLSGuard: function(item) {
@@ -190,7 +190,7 @@ const OptionList = new Lang.Class({
         for(let i = 0; i < options.length; i++) {
             this._addOption(options[i], i)
         }
-        if(this.items.length) {
+        if (this.items.length) {
             this._optionSelected(this.items[0])
         }
     },
@@ -208,7 +208,7 @@ const OptionList = new Lang.Class({
         if (item == this._selected) {
             return;
         }
-        if(this._selected) {
+        if (this._selected) {
             this._selected.actor.remove_style_pseudo_class('selected');
             this._selected.setSelected(false);
         }
@@ -251,6 +251,44 @@ const OptionList = new Lang.Class({
             log("SGFW: unexpected scope value "+ scope);
             return 1;
         }
+    },
+
+    scopeNext: function() {
+        this.buttonGroup.next();
+    },
+
+    scopePrevious: function() {
+        this.buttonGroup.previous();
+    },
+
+    ruleNext: function() {
+        let idx = this.selectedIdx()
+            , l = this.items.length;
+        idx++;
+        if (l == 0) {
+            return;
+        }
+        if (idx >= l) {
+            idx = 0;
+        }
+        this._optionSelected(this.items[idx]);
+    },
+
+    rulePrevious: function() {
+        let idx = this.selectedIdx()
+            , l = this.items.length;
+        idx--;
+        if (l == 0) {
+            return;
+        }
+        if (idx < 0) {
+            idx = (l - 1);
+        }
+        this._optionSelected(this.items[idx]);
+    },
+
+    ruleToggleTLSGuard: function() {
+        this._toggleTLSGuard(this._tlsg);
     }
 
 });
@@ -261,7 +299,7 @@ const ButtonGroup = new Lang.Class({
     _init: function() {
         this.actor = new St.BoxLayout({ style_class: 'fw-button-group'});
         this._checked = -1;
-        this._buttons= [];
+        this._buttons = [];
         for(let i = 0; i < arguments.length; i++) {
             let idx = i;
             this._buttons[i] = new St.Button({ style_class: 'fw-group-button button',
@@ -277,16 +315,41 @@ const ButtonGroup = new Lang.Class({
     },
 
     _setChecked: function(idx) {
-
-        if(idx == this._checked) {
+        if (idx == this._checked) {
             return;
         }
         this._buttons[idx].add_style_pseudo_class('checked');
-        if(this._checked >= 0) {
+        if (this._checked >= 0) {
             this._buttons[this._checked].remove_style_pseudo_class('checked');
         }
         this._checked = idx;
     },
+
+    next: function() {
+        let idx = this._checked
+            , l = this._buttons.length;
+        idx++;
+        if (l == 0) {
+            return
+        }
+        if (idx >= l) {
+            idx = 0;
+        }
+        this._setChecked(idx);
+    },
+
+    previous: function() {
+        let idx = this._checked
+            , l = this._buttons.length;
+        idx--;
+        if (l == 0) {
+            return
+        }
+        if (idx < 0) {
+            idx = (l - 1);
+        }
+        this._setChecked(idx);
+    }
 
 });
 
@@ -344,7 +407,7 @@ const ExpandingSection = new Lang.Class({
     },
 
     activate: function(event) {
-        if(!this.isOpen) {
+        if (!this.isOpen) {
             this.open();
         } else {
             this.close();
@@ -352,7 +415,7 @@ const ExpandingSection = new Lang.Class({
     },
 
     set_child: function(child) {
-        if(this.child) {
+        if (this.child) {
             this.child.destroy();
         }
         this.scroll.add_actor(child);
@@ -365,10 +428,10 @@ const ExpandingSection = new Lang.Class({
     },
 
     open: function() {
-        if(this.isOpen) {
+        if (this.isOpen) {
             return;
         }
-        if(!this.child) {
+        if (!this.child) {
             return;
         }
         this.isOpen = true;
@@ -394,7 +457,7 @@ const ExpandingSection = new Lang.Class({
     },
 
     close: function() {
-        if(!this.isOpen) {
+        if (!this.isOpen) {
             return;
         }
         this.isOpen = false;
@@ -434,7 +497,7 @@ const PromptDialogHeader = new Lang.Class({
     },
 
     setTitle: function(text) {
-        if(!text) {
+        if (!text) {
             text = "Unknown";
         }
         this.title.text = text;
@@ -444,12 +507,18 @@ const PromptDialogHeader = new Lang.Class({
         this.message.text = text;
     },
 
-    setIcon: function(name) {
-        this.icon.icon_name = name;
+    setIcon: function(name, sandbox) {
+        if (sandbox.length > 0 && Gtk.IconTheme.get_default().has_icon(sandbox)) {
+            this.icon.icon_name = sandbox;
+        } else if (name.length > 0 && Gtk.IconTheme.get_default().has_icon(name)) {
+            this.icon.icon_name = name;
+        } else {
+            this.icon.icon_name = 'security-high-symbolic';
+        }
     },
 
     setIconDefault: function() {
-        this.setIcon('security-high-symbolic');
+        this.icon.icon_name = 'security-high-symbolic';
     },
 
 });
@@ -491,6 +560,48 @@ const PromptDialog = new Lang.Class({
         ]);
     },
 
+    _onPromptScopeNext: function() {
+        if (this.details.isOpen) {
+            this.optionList.scopeNext();
+        }
+    },
+
+    _onPromptScopePrevious: function() {
+        if (this.details.isOpen) {
+            this.optionList.scopePrevious();
+        }
+    },
+
+    _onPromptRuleAllow: function() {
+        this.onAllow();
+    },
+
+    _onPromptRuleDeny: function() {
+        this.onDeny();
+    },
+
+    _onPromptRuleNext: function() {
+        if (this.details.isOpen) {
+            this.optionList.ruleNext();
+        }
+    },
+
+    _onPromptRulePrevious: function() {
+        if (this.details.isOpen) {
+            this.optionList.rulePrevious();
+        }
+    },
+
+    _onPromptToggleDetails: function() {
+        this.details.activate();
+    },
+
+    _onPromptToggleTlsguard: function() {
+        if (this.details.isOpen) {
+            this.optionList.ruleToggleTLSGuard();
+        }
+    },
+
     onAllow: function() {
         if (this.cbClose !== undefined && this.cbClose !== null) {
             this.cbClose();
@@ -508,14 +619,14 @@ const PromptDialog = new Lang.Class({
     },
 
     sendReturnValue: function(allow) {
-        if(!this._invocation) {
+        if (!this._invocation) {
             return;
         }
         let verb = "DENY";
-        if(allow) {
+        if (allow) {
             verb = "ALLOW";
             if (this.optionList.tlsGuard) {
-                        verb = "ALLOW_TLSONLY";
+                verb = "ALLOW_TLSONLY";
             } else {
                 verb = "ALLOW";
             }
@@ -529,7 +640,7 @@ const PromptDialog = new Lang.Class({
 
     ruleTarget: function() {
         let base = "";
-        if(this._proto != "tcp") {
+        if (this._proto != "tcp") {
             base = this._proto + ":";
         }
         switch(this.optionList.selectedIdx()) {
@@ -583,10 +694,11 @@ const PromptDialog = new Lang.Class({
             this.details.isOpen = false;
             this.details.activate()
         }
-        if(icon) {
-            this.header.setIcon(icon);
+        if (icon) {
+            this.header.setIcon(icon, sandbox);
         } else {
-            this.header.setIconDefault();
+            this.header.setIcon(path.split(/\//).pop(), sandbox);
+            //this.header.setIconDefault();
         }
 
         if (proto == "icmp") {
