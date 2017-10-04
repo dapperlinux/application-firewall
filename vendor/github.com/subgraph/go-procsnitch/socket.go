@@ -125,7 +125,7 @@ func findUDPSocketAll(srcAddr net.IP, srcPort uint16, dstAddr net.IP, dstPort ui
 				*/
 
 				if (ss.local.port == srcPort && (ss.local.ip.Equal(net.IPv4(0,0,0,0)) && ss.remote.ip.Equal(net.IPv4(0,0,0,0)))) {
-					fmt.Printf("Matching for UDP socket bound to *:%d\n",ss.local.port)
+					// fmt.Printf("Matching for UDP socket bound to *:%d\n",ss.local.port)
 					return true
 				} else if (ss.remote.ip.Equal(dstAddr) && ss.local.port == srcPort && ss.local.ip.Equal(srcAddr)) {
 					return true
@@ -154,7 +154,7 @@ func findUDPSocketAll(srcAddr net.IP, srcPort uint16, dstAddr net.IP, dstPort ui
 									ifip = x.IP
 							}
 							if ss.local.ip.Equal(ifip) {
-								fmt.Printf("Matched on UDP socket bound to %v:%d\n",ifip,srcPort)
+								// fmt.Printf("Matched on UDP socket bound to %v:%d\n",ifip,srcPort)
 								return true
 							}
 						}
