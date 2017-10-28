@@ -121,7 +121,7 @@ const FirewallPromptHandler = new Lang.Class({
         }
 
         let fname = binding.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
-        let fname = "_on"+ fname[0].toUpperCase() + fname.substr(1);
+        fname = "_on"+ fname[0].toUpperCase() + fname.substr(1);
         if (!( fname in this._dialogs[0] )) {
             log("SGFW: Invalid key binding (1)... " + fname);
             return true;

@@ -5,6 +5,7 @@ After=network.target multi-user.target
 
 [Service]
 Environment="GODEBUG=cgocheck=0"
+ExecStartPre=/usr/bin/install -d /var/run/fw-daemon
 ExecStart=/usr/sbin/fw-daemon
 ExecReload=/bin/kill -HUP ${MAINPID}
 StandardOutput=syslog
